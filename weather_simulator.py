@@ -1,72 +1,155 @@
 """
-Simple Weather Simulator
-------------------------
-No API. No internet.
-Pure Python logic for GitHub workflow testing.
+Weather Simulator (Refactored)
+------------------------------
+- Modular & testable design
+- Configuration-driven alert rules
+- Deterministic mode for CI/testing
+- Clean separation of concerns
 """
 
+from dataclasses import dataclass
 from datetime import datetime
+from typing import List, Optional
 import random
 
 
-def generate_weather():
-    """Simulate weather data."""
-    return {
-        "temperature": random.randint(-5, 45),
-        "humidity": random.randint(20, 90),
-        "wind_speed": random.randint(0, 20),
-        "condition": random.choice(["Clear", "Cloudy", "Rain", "Storm"])
-    }
+# =========================
+# Configuration
+# =========================
+
+ALERT_RULES = {
+    "EXTREME_HEAT": {
+        "temp_min": 38,
+        "message": "Extreme heat alert"
+    },
+    "FREEZING": {
+        "temp_max": 0,
+        "message": "Freezing temperature alert"
+    },
+    "HIGH_WIND": {
+        "wind_min": 15,
+        "message": "High wind alert"
+    },
+    "RAIN_STORM": {
+        "conditions": ["Rain", "Storm"],
+        "message": "Rain/Storm alert"
+    },
+}
+
+WEATHER_CONDITIONS = ["Clear", "Cloudy", "Rain", "Storm"]
 
 
-def generate_alerts(weather):
-    """Generate alerts based on weather conditions."""
+# =========================
+# Data Model
+# =========================
+
+@dataclass
+class WeatherData:
+    temperature: int
+    humidity: int
+    wind_speed: int
+    condition: str
+
+
+# =========================
+# Validation
+# =========================
+
+def validate_city(city: str) -> str:
+    city = city.strip()
+    if not city:
+        raise ValueError("City name cannot be empty")
+    if len(city) < 2:
+        raise ValueError("City name is too short")
+    return city
+
+
+# =========================
+# Weather Generation
+# =========================
+
+def generate_weather(seed: Optional[int] = None) -> WeatherData:
+    """
+    Generate simulated weather data.
+    Optional seed enables deterministic behavior for tests.
+    """
+    if seed is not None:
+        random.seed(seed)
+
+    return WeatherData(
+        temperature=random.randint(-5, 45),
+        humidity=random.randint(20, 90),
+        wind_speed=random.randint(0, 20),
+        condition=random.choice(WEATHER_CONDITIONS),
+    )
+
+
+# =========================
+# Alert Engine
+# =========================
+
+def generate_alerts(weather: WeatherData) -> List[str]:
+    """
+    Generate alerts based on configured rules.
+    """
     alerts = []
 
-    if weather["temperature"] >= 38:
-        alerts.append("Extreme heat alert")
+    for rule in ALERT_RULES.values():
+        if "temp_min" in rule and weather.temperature >= rule["temp_min"]:
+            alerts.append(rule["message"])
 
-    if weather["temperature"] <= 0:
-        alerts.append("Freezing temperature alert")
+        elif "temp_max" in rule and weather.temperature <= rule["temp_max"]:
+            alerts.append(rule["message"])
 
-    if weather["wind_speed"] >= 15:
-        alerts.append("High wind alert")
+        elif "wind_min" in rule and weather.wind_speed >= rule["wind_min"]:
+            alerts.append(rule["message"])
 
-    if weather["condition"] in ["Rain", "Storm"]:
-        alerts.append("Rain/Storm alert")
+        elif "conditions" in rule and weather.condition in rule["conditions"]:
+            alerts.append(rule["message"])
 
     return alerts
 
 
-def print_report(city, weather, alerts):
-    """Print weather report."""
-    print("\nWeather Report")
-    print("--------------")
-    print("City:", city)
-    print("Time:", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+# =========================
+# Report Formatting
+# =========================
 
-    for key, value in weather.items():
-        print(f"{key}: {value}")
+def format_report(city: str, weather: WeatherData, alerts: List[str]) -> str:
+    """
+    Create a formatted weather report string.
+    """
+    lines = []
+    lines.append("Weather Report")
+    lines.append("-" * 14)
+    lines.append(f"City: {city}")
+    lines.append(f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    lines.append("")
+    lines.append(f"Temperature: {weather.temperature}°C")
+    lines.append(f"Humidity: {weather.humidity}%")
+    lines.append(f"Wind Speed: {weather.wind_speed} km/h")
+    lines.append(f"Condition: {weather.condition}")
 
     if alerts:
-        print("\nAlerts:")
+        lines.append("\nAlerts:")
         for alert in alerts:
-            print("-", alert)
+            lines.append(f"- {alert}")
     else:
-        print("\nNo alerts. Weather is normal.")
+        lines.append("\nNo alerts. Weather is normal.")
+
+    return "\n".join(lines)
 
 
-def main():
-    city = input("Enter city name: ").strip()
+# =========================
+# Application Entry Point
+# =========================
 
-    if not city:
-        print("City name cannot be empty")
-        return
+def main() -> None:
+    try:
+        city_input = input("Enter city name: ")
+        city = validate_city(city_input)
 
-    weather = generate_weather()
-    alerts = generate_alerts(weather)
-    print_report(city, weather, alerts)
+        weather = generate_weather()
+        alerts = generate_alerts(weather)
 
-
-if __name__ == "__main__":
-    main()
+        report = format_report(city, weather, alerts)
+        print("\n" + report)
