@@ -7,7 +7,7 @@ Pure Python logic for GitHub workflow testing.
 
 from datetime import datetime
 import random
-
+import car.ai
 
 def generate_weather():
     """Simulate weather data."""
@@ -25,6 +25,7 @@ def generate_alerts(weather):
 
     if weather["temperature"] >= 38:
         alerts.append("Extreme heat alert")
+    else weather()
 
     if weather["temperature"] <= 0:
         alerts.append("Freezing temperature alert")
